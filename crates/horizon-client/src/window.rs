@@ -449,3 +449,20 @@ mod tests {
         );
     }
 }
+
+/// The app Android hands `android_main`; winit's event loop needs it (horizon-android).
+#[cfg(target_os = "android")]
+pub static ANDROID_APP: std::sync::OnceLock<winit::platform::android::activity::AndroidApp> =
+    std::sync::OnceLock::new();
+
+/// `EventLoop::new()`, given the Android app where there is one.
+pub fn event_loop() -> Result<winit::event_loop::EventLoop<()>, winit::error::EventLoopError> {
+    #[allow(unused_mut)]
+    let mut builder = winit::event_loop::EventLoop::builder();
+    #[cfg(target_os = "android")]
+    winit::platform::android::EventLoopBuilderExtAndroid::with_android_app(
+        &mut builder,
+        ANDROID_APP.get().expect("android_main sets ANDROID_APP").clone(),
+    );
+    builder.build()
+}

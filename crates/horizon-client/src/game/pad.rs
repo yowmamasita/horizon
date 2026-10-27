@@ -66,8 +66,59 @@ mod hardware {
 
     impl Pads {
         pub(super) fn read(&mut self) -> PadState {
+            #[cfg(target_os = "android")]
+            return android_pad(winit::platform::android::gamepad::state());
+            #[cfg(not(target_os = "android"))]
             PadState::default()
         }
+    }
+
+    /// Android's controller (the Odin's built-in one), from winit's patched gamepad state.
+    #[cfg(target_os = "android")]
+    fn android_pad(pad: winit::platform::android::gamepad::State) -> PadState {
+        use horizon_client::gamepad::Button as B;
+        // Bit `keycode - 96` from KEYCODE_BUTTON_A, then the d-pad keys at 16..=19.
+        const KEYS: [(u32, B); 14] = [
+            (0, B::South),
+            (1, B::East),
+            (3, B::West),
+            (4, B::North),
+            (6, B::LeftBumper),
+            (7, B::RightBumper),
+            (10, B::LeftStick),
+            (11, B::RightStick),
+            (12, B::Start),
+            (13, B::Select),
+            (16, B::DPadUp),
+            (17, B::DPadDown),
+            (18, B::DPadLeft),
+            (19, B::DPadRight),
+        ];
+        let [x, y, z, rz, brake, gas, hat_x, hat_y] = pad.axes;
+        let mut state = PadState {
+            // Android's sticks are y-down; PadState's are up-positive.
+            left: [x, -y],
+            right: [z, -rz],
+            triggers: [brake, gas],
+            ..PadState::default()
+        };
+        for (bit, button) in KEYS {
+            if pad.buttons & 1 << bit != 0 {
+                state.set(button, true);
+            }
+        }
+        // A d-pad reported as a hat.
+        for (on, button) in [
+            (hat_y < -0.5, B::DPadUp),
+            (hat_y > 0.5, B::DPadDown),
+            (hat_x < -0.5, B::DPadLeft),
+            (hat_x > 0.5, B::DPadRight),
+        ] {
+            if on {
+                state.set(button, true);
+            }
+        }
+        state
     }
 
     impl Game<'_> {

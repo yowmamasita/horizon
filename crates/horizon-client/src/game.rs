@@ -260,7 +260,7 @@ use std::{
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId, ElementState, MouseButton, MouseScrollDelta, WindowEvent},
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    event_loop::{ActiveEventLoop, ControlFlow},
     keyboard::{KeyCode, PhysicalKey},
     window::{CursorGrabMode, Window, WindowId},
 };
@@ -13832,7 +13832,7 @@ fn write_report(game: &Game<'_>) -> Result<()> {
 }
 
 fn run_event_loop(mut game: Game<'_>) -> Result<()> {
-    EventLoop::new()?.run_app(&mut game)?;
+    horizon_client::window::event_loop()?.run_app(&mut game)?;
     horizon_client::discord_presence::stop();
     write_report(&game)?;
     if let Some(e) = game.error.take() {
@@ -14184,7 +14184,7 @@ fn run_loading(
         error: None,
     };
     let mut app = App::Loading(Box::new(loading));
-    EventLoop::new()?.run_app(&mut app)?;
+    horizon_client::window::event_loop()?.run_app(&mut app)?;
     horizon_client::discord_presence::stop();
     match app {
         App::Ready(mut game) => {

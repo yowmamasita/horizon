@@ -106,6 +106,27 @@ pub trait Clipboard {
     fn set(&mut self, text: &str);
 }
 
+// ponytail: arboard has no Android backend, so copy and paste stay inside the game there;
+// a JNI ClipboardManager would reach the system's.
+#[cfg(target_os = "android")]
+mod arboard {
+    pub struct Clipboard;
+    pub enum Error {
+        ContentNotAvailable,
+    }
+    impl Clipboard {
+        pub fn new() -> Result<Self, Error> {
+            Err(Error::ContentNotAvailable)
+        }
+        pub fn get_text(&mut self) -> Result<String, Error> {
+            Err(Error::ContentNotAvailable)
+        }
+        pub fn set_text(&mut self, _: String) -> Result<(), Error> {
+            Err(Error::ContentNotAvailable)
+        }
+    }
+}
+
 /// The system clipboard (`ClipboardManager`). On Wayland, arboard uses the
 /// data-control protocol and falls back to X11 (XWayland) on compositors
 /// without it. When no system clipboard can be reached, text copied in the
