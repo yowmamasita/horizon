@@ -107,6 +107,12 @@ mod hardware {
                 state.set(button, true);
             }
         }
+        // Triggers some pads also (or only) send as KEYCODE_BUTTON_L2 and R2: a full pull.
+        for (side, bit) in [(0, 8), (1, 9)] {
+            if pad.buttons & 1 << bit != 0 {
+                state.triggers[side] = 1.0;
+            }
+        }
         // A d-pad reported as a hat.
         for (on, button) in [
             (hat_y < -0.5, B::DPadUp),

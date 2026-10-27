@@ -12529,6 +12529,23 @@ impl ApplicationHandler for Game<'_> {
     /// The application is ending. On macOS, Quit (Cmd+Q) ends it through
     /// applicationWillTerminate without a CloseRequested; vanilla's GLFW
     /// window turns it into a window close, so Minecraft.stop saves the world.
+    /// Android stops a backgrounded app and may kill it without `exiting`: save
+    /// the world as the autosave does, so nothing since the last one is lost.
+    fn suspended(&mut self, _event_loop: &ActiveEventLoop) {
+        if self.title.is_some() || self.player.is_none() {
+            return;
+        }
+        // Single player's world is its server thread's (as `horizon-ctl save`).
+        let saved = match &self.integrated {
+            Some(server) => server
+                .call(|g| g.save_game().map_err(|e| e.to_string()))
+                .unwrap_or_else(|| Err("the integrated server stopped".into())),
+            None => self.save_game().map_err(|e| e.to_string()),
+        };
+        if let Err(e) = saved {
+            log::warn!("Horizon: failed to save the world on suspend: {e}");
+        }
+    }
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         self.pad_close_output();
         if let Err(e) = self.save_for_exit() {
@@ -14089,6 +14106,22 @@ impl ApplicationHandler for App {
         }
     }
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
+        // A touchscreen (Android's) drives the cursor and the left button, for the menus.
+        // ponytail: every finger is the one cursor; no touch controls in the world.
+        if let WindowEvent::Touch(touch) = event {
+            use winit::event::{MouseButton, TouchPhase};
+            let device_id = touch.device_id;
+            let position = touch.location;
+            self.window_event(event_loop, id, WindowEvent::CursorMoved { device_id, position });
+            let state = match touch.phase {
+                TouchPhase::Started => ElementState::Pressed,
+                TouchPhase::Ended | TouchPhase::Cancelled => ElementState::Released,
+                TouchPhase::Moved => return,
+            };
+            let button = MouseButton::Left;
+            self.window_event(event_loop, id, WindowEvent::MouseInput { device_id, state, button });
+            return;
+        }
         match self {
             App::Loading(loading) => loading.window_event(event_loop, id, event),
             App::Ready(game) => game.window_event(event_loop, id, event),
@@ -14142,6 +14175,11 @@ impl ApplicationHandler for App {
                 }
                 event_loop.exit();
             }
+        }
+    }
+    fn suspended(&mut self, event_loop: &ActiveEventLoop) {
+        if let App::Ready(game) = self {
+            game.suspended(event_loop);
         }
     }
     fn exiting(&mut self, event_loop: &ActiveEventLoop) {

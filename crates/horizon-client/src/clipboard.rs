@@ -113,16 +113,17 @@ mod arboard {
     pub struct Clipboard;
     pub enum Error {
         ContentNotAvailable,
+        Unavailable,
     }
     impl Clipboard {
         pub fn new() -> Result<Self, Error> {
             Err(Error::ContentNotAvailable)
         }
         pub fn get_text(&mut self) -> Result<String, Error> {
-            Err(Error::ContentNotAvailable)
+            Err(Error::Unavailable)
         }
         pub fn set_text(&mut self, _: String) -> Result<(), Error> {
-            Err(Error::ContentNotAvailable)
+            Err(Error::Unavailable)
         }
     }
 }
