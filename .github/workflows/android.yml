@@ -7,6 +7,8 @@ name: android
 on:
   push:
     branches: [android]
+    # The README and docs don't change the APK: no release for them.
+    paths-ignore: ['README.md', 'docs/**']
   workflow_dispatch:
 permissions:
   contents: write
