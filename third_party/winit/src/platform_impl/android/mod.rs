@@ -373,6 +373,24 @@ impl<T: 'static> EventLoop<T> {
     {
         let mut input_status = InputStatus::Handled;
         match event {
+            InputEvent::MotionEvent(motion_event)
+                if motion_event.source().is_joystick_class() =>
+            {
+                use android_activity::input::Axis;
+                let pointer = motion_event.pointer_at_index(0);
+                let axis = |a| pointer.axis_value(a);
+                let mut state = crate::platform::android::gamepad::STATE.lock().unwrap();
+                state.axes = [
+                    axis(Axis::X),
+                    axis(Axis::Y),
+                    axis(Axis::Z),
+                    axis(Axis::Rz),
+                    axis(Axis::Brake).max(axis(Axis::Ltrigger)),
+                    axis(Axis::Gas).max(axis(Axis::Rtrigger)),
+                    axis(Axis::HatX),
+                    axis(Axis::HatY),
+                ];
+            },
             InputEvent::MotionEvent(motion_event) => {
                 let window_id = window::WindowId(WindowId);
                 let device_id = event::DeviceId(DeviceId(motion_event.device_id()));
@@ -432,6 +450,20 @@ impl<T: 'static> EventLoop<T> {
                         if self.ignore_volume_keys =>
                     {
                         input_status = InputStatus::Unhandled
+                    },
+                    keycode
+                        if crate::platform::android::gamepad::bit(keycode.into()).is_some()
+                            && (key.source().is_joystick_class()
+                                || u32::from(key.source()) & 0x401 == 0x401) =>
+                    {
+                        // A controller button (SOURCE_GAMEPAD is 0x401): kept for the game's
+                        // pad, not sent as an unidentified key.
+                        let bit = crate::platform::android::gamepad::bit(keycode.into()).unwrap();
+                        let mut state = crate::platform::android::gamepad::STATE.lock().unwrap();
+                        match key.action() {
+                            KeyAction::Down => state.buttons |= bit,
+                            _ => state.buttons &= !bit,
+                        }
                     },
                     keycode => {
                         let state = match key.action() {

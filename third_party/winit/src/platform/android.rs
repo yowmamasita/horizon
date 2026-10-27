@@ -186,3 +186,34 @@ pub mod activity {
     #[doc(hidden)]
     pub struct AndroidApp;
 }
+
+/// Horizon's patch: the game controller winit has no events for (its buttons arrive as
+/// unidentified keys and its axes not at all), kept as the last state its input events gave.
+pub mod gamepad {
+    use std::sync::Mutex;
+
+    /// Buttons: bit `keycode - 96` for `KEYCODE_BUTTON_A..=KEYCODE_BUTTON_MODE`, and bits
+    /// 16..=19 for `KEYCODE_DPAD_UP/DOWN/LEFT/RIGHT`. Axes: X, Y, Z, RZ, BRAKE, GAS, HAT_X,
+    /// HAT_Y (LTRIGGER and RTRIGGER count as BRAKE and GAS).
+    #[derive(Clone, Copy, Debug, Default, PartialEq)]
+    pub struct State {
+        pub buttons: u32,
+        pub axes: [f32; 8],
+    }
+
+    pub(crate) static STATE: Mutex<State> = Mutex::new(State { buttons: 0, axes: [0.0; 8] });
+
+    /// The controller's state now.
+    pub fn state() -> State {
+        *STATE.lock().unwrap()
+    }
+
+    /// The bit of a controller key, if it is one.
+    pub(crate) fn bit(keycode: u32) -> Option<u32> {
+        match keycode {
+            96..=110 => Some(1 << (keycode - 96)),
+            19..=22 => Some(1 << (keycode - 19 + 16)),
+            _ => None,
+        }
+    }
+}
