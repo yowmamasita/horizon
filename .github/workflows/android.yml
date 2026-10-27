@@ -1,0 +1,74 @@
+name: android
+# The Android APK (crates/horizon-android): built on every push to the android branch and by hand, and published
+# as a GitHub release, android-N, the latest, so players download one file. Signed with the ANDROID_KEYSTORE secret
+# (a base64 .jks) and ANDROID_KEYSTORE_PASS, so each release installs over the last; without them (forks), a debug
+# key made in the run, and every release needs the old one uninstalled first.
+# The APK holds no Minecraft files: players prepare their own (horizon-prepare) and copy them to the device.
+on:
+  push:
+    branches: [android]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Rust toolchain, cargo-ndk and the Android SDK parts
+        run: |
+          rustup toolchain install stable --profile minimal --target aarch64-linux-android
+          cargo install cargo-ndk --locked
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "ndk;28.2.13676358" "build-tools;35.0.0" "platforms;android-35" > /dev/null
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: android
+      - name: Build libmain.so
+        run: cargo ndk -t arm64-v8a -P 30 -o crates/horizon-android/lib build --release -p horizon-android
+      - name: Package the APK
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: 0.1.${{ github.run_number }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            export KEYSTORE="$RUNNER_TEMP/release.jks"
+          else
+            unset KEYSTORE_PASS
+          fi
+          crates/horizon-android/build-apk.sh
+          mv crates/horizon-android/horizon.apk horizon-android-arm64.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: horizon-android-arm64
+          path: horizon-android-arm64.apk
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "android-${{ github.run_number }}" horizon-android-arm64.apk \
+            --target "$GITHUB_SHA" --latest --title "Horizon for Android 0.1.${{ github.run_number }}" \
+            --notes "$(cat <<'NOTES'
+          Horizon's client for Android (arm64, Vulkan; Android 11 or later). Tested on the AYN Odin 3, with its built-in controller.
+
+          The APK contains no Minecraft files. You need your own copy of Minecraft: Java Edition 26.3:
+          1. On a computer, run horizon-prepare from a Horizon checkout (see the README); it writes `.local/horizon-client/26.3`.
+          2. Install this APK, then copy that folder to the device:
+             `adb push .local/horizon-client/26.3 /sdcard/Android/data/dev.horizon.android/files/.local/horizon-client/26.3`
+          3. Start Horizon.
+
+          Not yet: touch controls, the system clipboard, code mods.
+          NOTES
+          )"
