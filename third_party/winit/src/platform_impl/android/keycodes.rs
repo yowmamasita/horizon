@@ -83,7 +83,8 @@ pub fn to_physical_key(keycode: Keycode) -> PhysicalKey {
         Keycode::F12 => KeyCode::F12,
 
         Keycode::Space => KeyCode::Space,
-        Keycode::Escape => KeyCode::Escape,
+        // Horizon's patch: Back is Escape, as Android games expect (pause, leave a menu).
+        Keycode::Escape | Keycode::Back => KeyCode::Escape,
         Keycode::Enter => KeyCode::Enter, // not on the Numpad
         Keycode::Tab => KeyCode::Tab,
 
@@ -233,7 +234,7 @@ pub fn to_logical(key_char: Option<KeyMapChar>, keycode: Keycode) -> Key {
             // Using `BrowserHome` instead of `GoHome` according to
             // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values
             Home => Key::Named(NamedKey::BrowserHome),
-            Back => Key::Named(NamedKey::BrowserBack),
+            Back => Key::Named(NamedKey::Escape),
             Call => Key::Named(NamedKey::Call),
             Endcall => Key::Named(NamedKey::EndCall),
 
