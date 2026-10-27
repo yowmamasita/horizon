@@ -67,8 +67,12 @@ jobs:
           1. On a computer, run horizon-prepare from a Horizon checkout (see the README); it writes `.local/horizon-client/26.3`.
           2. Install this APK, then copy that folder to the device:
              `adb push .local/horizon-client/26.3 /sdcard/Android/data/dev.horizon.android/files/.local/horizon-client/26.3`
+             On Android 16 and later, then: `adb shell chmod -R a+rX /sdcard/Android/data/dev.horizon.android/files/.local`
           3. Start Horizon.
 
-          Not yet: touch controls, the system clipboard, code mods.
+          Controls: a controller plays (the Odin 3's built-in one, or a paired pad); touch is the mouse in menus; Back is Escape.
+          Tested on the AYN Odin 3 (Android 15) and a Pixel 6 (Android 16).
+
+          Not yet: touch controls in the world, the system clipboard, controller rumble, code mods.
           NOTES
           )"

@@ -40,6 +40,39 @@ Horizon is installed through **the Horizon launcher**. Get it from [playhorizon.
   </tr>
 </table>
 
+## Android
+
+This fork also builds the game for Android: [download the latest APK](https://github.com/yowmamasita/horizon/releases/latest) (arm64, Vulkan, Android 11 or later). Every push to the `android` branch builds and publishes it ([`android.yml`](.github/workflows/android.yml)).
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/media/android/odin3-world.webp" alt="A birch forest on the AYN Odin 3"></td>
+    <td width="50%"><img src="docs/media/android/odin3-inventory.webp" alt="The inventory on the AYN Odin 3, opened with the controller's Y button"></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/media/android/pixel6-title.webp" alt="The title screen on a Pixel 6"></td>
+    <td width="50%"><img src="docs/media/android/pixel6-world.webp" alt="A snowy taiga on a Pixel 6"></td>
+  </tr>
+</table>
+
+The APK holds no Minecraft files. Prepare yours on a computer (see [Build from source](#build-from-source)), then copy them to the device with adb:
+
+```sh
+adb install horizon-android-arm64.apk
+adb push .local/horizon-client/26.3 /sdcard/Android/data/dev.horizon.android/files/.local/horizon-client/26.3
+# Android 16 and later: let the app into the folders adb created
+adb shell chmod -R a+rX /sdcard/Android/data/dev.horizon.android/files/.local
+```
+
+**Controls:** a controller plays as on the desktop (the built-in one of a handheld such as the AYN Odin 3, or a paired pad). The touchscreen works as the mouse in menus, and Back is Escape (pause, leave a menu). There are no touch controls in the world yet, so a phone needs a controller to play. The world is saved when the app goes to the background.
+
+| Device | GPU | Title screen to world | Frame rate (render distance 12, Fancy) |
+|---|---|---|---|
+| AYN Odin 3 (Android 15) | Adreno 830 | about 25 s for a new world | 60 fps with VSync, 119 fps without (the 120 cap) |
+| Pixel 6 (Android 16) | Mali-G78 | about 35 s for a new world | 60 fps with VSync |
+
+Not yet on Android: touch controls in the world, the system clipboard (copy and paste stay inside the game), controller rumble, code mods. To build the APK yourself, see [`crates/horizon-android/build-apk.sh`](crates/horizon-android/build-apk.sh).
+
 ## What works today
 
 The [documentation](https://playhorizon.dev/docs/) covers each of these.
